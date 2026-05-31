@@ -18,7 +18,7 @@ env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   AWS_ROLE_NAME: github-actions-ecs-role
   IMAGE_TAG: ${{ github.sha }}
-  VITE_API_URL: ""
+  VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
 jobs:
   docker-ci:
