@@ -1,73 +1,14 @@
-# learn-ecs-frontend
+# myecs-frontend
 
-Clean React + Vite frontend for ECS demo.
+React + Vite single-page app, built into static files and served by nginx on port 80. nginx also proxies `/api/` requests to the backend. Frontend tier of a three-tier app running on AWS ECS Fargate — infrastructure lives in `aws_ecs_infra`.
 
-## Environment
+## Build
 
-Only one app-level environment variable is required:
+Multi-stage Dockerfile: stage 1 (`node`) runs `npm run build`, stage 2 (`nginx`) serves `/app/dist`.
 
-```text
-VITE_API_URL=http://localhost:8000
-```
-
-For ECS:
-
-```text
-VITE_API_URL=http://learn-ecs-backend.ecs.local:8000
-```
-
-## Local Run
+`VITE_API_URL` is a **build-time** argument. Leave it empty so the app calls relative `/api/...` paths and nginx forwards them to the backend.
 
 ```bash
-npm install
-npm run dev
-```
-
-Open:
-
-```text
-http://localhost:5173
-```
-
-## Docker Compose Run
-
-```bash
-docker compose up --build
-```
-
-Open:
-
-```text
-http://localhost:3000
-```
-
-## Docker Build For ECS
-
-```bash
-docker build \
-  --build-arg VITE_API_URL=http://learn-ecs-backend.ecs.local:8000 \
-  -t learn-ecs-frontend .
-```
-
-## ECS Container Port
-
-```text
-80
-```
-
-## Notes
-
-This repo does NOT use:
-
-```text
-docker-entrypoint.sh
-config.js
-nginx API proxy
-fake frontend env variables
-```
-
-The app uses:
-
-```js
-import.meta.env.VITE_API_URL
+docker build -t myecs-frontend .
+docker run --rm -p 3000:80 myecs-frontend
 ```

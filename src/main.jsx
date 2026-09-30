@@ -67,8 +67,8 @@ function App() {
     <main className="page">
       <nav className="nav">
         <div>
-          <div className="brandTitle">Learn DevOps Now Myanmar</div>
-          <div className="brandSubtitle">Three Tier Application Demo</div>
+          <div className="brandTitle">MyECS Demo</div>
+          <div className="brandSubtitle">Three-tier app on AWS ECS Fargate</div>
         </div>
         <div className="statusPill">{health}</div>
       </nav>
@@ -138,7 +138,7 @@ function App() {
             <input
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
-              placeholder="Thaung Htike Oo"
+              placeholder="Your name"
               required
             />
 
