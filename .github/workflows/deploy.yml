@@ -25,17 +25,22 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # The same build the deploy job does, without pushing: proves the Dockerfile, npm ci
-      # (package.json and lockfile in sync) and the vite build all work from the commit alone
+      # Stage 1 only: Node + node_modules (npm ci proves package.json and the lockfile are in sync).
+      # Lint and audit run inside it, so Node never has to be set up on the runner.
+      - name: Build the build stage
+        run: docker build --provenance=false --target build -t frontend-deps .
+
+      # Cheapest checks first: these fail in seconds, before the full image build
+      - name: Lint (eslint)
+        run: docker run --rm frontend-deps npm run lint
+
+      - name: Audit dependencies (fail on high or critical)
+        run: docker run --rm frontend-deps npm audit --audit-level=high
+
+      # The same build the deploy job does, without pushing: proves the Dockerfile and the vite
+      # build work from the commit alone. Stage 1's layers are cached from the first step.
       - name: Build the image
         run: docker build --provenance=false -t frontend-check .
-
-      # Stage 1 has Node and node_modules, so audit there instead of setting Node up on the runner.
-      # Every layer is cached from the step above, so this build is instant.
-      - name: Audit dependencies (fail on high or critical)
-        run: |
-          docker build --provenance=false --target build -t frontend-deps .
-          docker run --rm frontend-deps npm audit --audit-level=high
 
   deploy:
     needs: check # a failed build or audit means this job never starts
