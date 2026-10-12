@@ -18,6 +18,7 @@ env:
   ECS_SERVICE: myecs-frontend
   TASK_FAMILY: myecs-frontend
   CONTAINER_NAME: frontend
+  APP_URL: https://myecs.nt-nick.link # the public domain, as users reach it
   # Pinned by version AND digest: a re-pushed or hijacked tag can't swap in a different scanner
   TRIVY_IMAGE: aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
 
@@ -135,4 +136,24 @@ jobs:
             sleep 15
           done
           echo "::error::Timed out after 20 min waiting for the deployment"
+          exit 1
+
+      # COMPLETED proves the tasks are healthy from inside AWS. This proves what a user gets,
+      # from outside AWS: the page is served AND nginx still proxies /api to the backend.
+      # It can't roll back (the deployment is already complete); a failure turns the run red.
+      - name: Smoke test (live site)
+        run: |
+          for i in $(seq 1 12); do # 12 x 5s = 1 min, absorbs a slow DNS or ALB moment
+            # /api must return the backend's JSON, not just any 200: nginx's SPA fallback
+            # (try_files ... /index.html) answers 200 with HTML for paths it doesn't proxy
+            if curl -fsS --max-time 5 "$APP_URL/" | grep -q '<div id="root">' \
+              && curl -fsS --max-time 5 "$APP_URL/api/health" \
+                | jq -e '.database == "connected"' > /dev/null; then
+              echo "OK: page served and /api proxied to the backend"
+              exit 0
+            fi
+            echo "$(date +%T) attempt $i: not healthy yet"
+            sleep 5
+          done
+          echo "::error::Smoke test failed: $APP_URL/ or $APP_URL/api/health is not answering correctly"
           exit 1
