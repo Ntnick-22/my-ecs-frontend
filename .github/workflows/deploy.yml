@@ -18,6 +18,8 @@ env:
   ECS_SERVICE: myecs-frontend
   TASK_FAMILY: myecs-frontend
   CONTAINER_NAME: frontend
+  # Pinned by version AND digest: a re-pushed or hijacked tag can't swap in a different scanner
+  TRIVY_IMAGE: aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
 
 jobs:
   check:
@@ -41,6 +43,13 @@ jobs:
       # build work from the commit alone. Stage 1's layers are cached from the first step.
       - name: Build the image
         run: docker build --provenance=false -t frontend-check .
+
+      # Fails only on HIGH/CRITICAL findings that HAVE a fix. Unfixed OS CVEs have nothing to
+      # upgrade to, so failing on them would keep the pipeline red with no way to act on it.
+      - name: Scan the image (Trivy)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
+            image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress frontend-check
 
   deploy:
     needs: check # a failed build or audit means this job never starts
